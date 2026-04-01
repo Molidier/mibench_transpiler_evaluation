@@ -45,6 +45,54 @@ rg '"status": "FAIL"' results_mibench_asm.json results_reference.json
 
 That command should print nothing.
 
+## Which Assembly Files To Translate
+
+For each benchmark directory under `mibench_problems/`, the important files are:
+
+- `asm/`: the source x86-64 assembly produced by `compile_mibench_asm.py`
+- `pred_asm/`: where your translated ARM64 or RISC-V assembly must be placed
+- `metadata.json`: tells the evaluator which `.s` files belong to the small build and, when needed, the large build
+- `pred.s`: informational only; it is not assembled or executed by the evaluator
+
+Example layout:
+
+```text
+mibench_problems/automotive_basicmath/
+├── asm/
+│   ├── basicmath_small.s
+│   ├── basicmath_large.s
+│   ├── cubic.s
+│   ├── isqrt.s
+│   └── rad2deg.s
+├── pred_asm/
+│   ├── basicmath_small.s
+│   ├── basicmath_large.s
+│   ├── cubic.s
+│   ├── isqrt.s
+│   └── rad2deg.s
+└── metadata.json
+```
+
+Rules:
+
+- Translate the x86 files from `asm/`.
+- Place the translated files in `pred_asm/`.
+- Keep the same filenames in `pred_asm/` as in `asm/`.
+- Do not overwrite files in `asm/`; the evaluator reads original x86 from `asm/` and translated output from `pred_asm/`.
+- Replace the placeholder files created in `pred_asm/`; `eval_pred_mibench.py` will fail if they still contain the placeholder text.
+
+How to know exactly which files are required:
+
+- `metadata.json["asm_files"]` lists the files required for the small-input executable.
+- `metadata.json["asm_files_large"]` lists the files required for the large-input executable when the large executable is built from a different source set.
+- If `asm_files_large` is `null`, the large run reuses the same translated binary as the small run and only the `asm_files` set must be translated.
+
+Practical guidance:
+
+- If a benchmark has both small and large source variants, translate every `.s` file named in both `asm_files` and `asm_files_large`.
+- If a file appears in both lists, you still provide only one translated file with that name in `pred_asm/`.
+- If the benchmark has only `asm_files` and no `asm_files_large`, translate only the files in `asm_files`.
+
 ## Mac Apple Silicon Workflow
 
 Use an Apple Silicon Mac to evaluate translated assembly in `pred_asm/` after the Linux preparation steps are complete.
